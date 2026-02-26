@@ -3817,7 +3817,7 @@ textarea::placeholder {
 
 .reminders-page-minimal .reminders-grid {
   height: 100%;
-  align-content: start;
+  align-content: center;
   gap: 10px !important;
 }
 
@@ -4859,4 +4859,92 @@ textarea::placeholder {
   font-size: clamp(0.72rem, 0.82vw, 0.9rem) !important;
   font-weight: 700 !important;
   text-shadow: 0 1px 2px rgba(255, 255, 255, 0.75);
+}
+
+/* Reminders page readability boost */
+.reminders-page-minimal .reminders-grid {
+  width: min(1120px, 96%) !important;
+  margin: 0 auto !important;
+  gap: 14px !important;
+}
+
+.reminders-page-minimal .reminders-grid .panel {
+  padding: 14px 16px !important;
+}
+
+.reminders-page-minimal .reminders-grid .panel h3,
+.reminders-page-minimal .reminder-restrictions-panel h3 {
+  font-size: clamp(2.3rem, 3.1vw, 2.9rem) !important;
+  margin-bottom: 12px !important;
+}
+
+.reminders-page-minimal .reminder-item {
+  min-height: 74px !important;
+  border-radius: 14px !important;
+  padding: 14px 16px !important;
+}
+
+.reminders-page-minimal .reminder-icon {
+  width: 34px !important;
+  height: 34px !important;
+}
+
+.reminders-page-minimal .reminder-item p {
+  font-size: clamp(1.8rem, 2.35vw, 2.2rem) !important;
+  line-height: 1.15 !important;
+}
+
+.reminders-page-minimal .reminder-note {
+  font-size: 1.2rem !important;
+  padding: 10px 16px !important;
+}
+
+.reminders-page-minimal .reminder-note-icon {
+  width: 20px !important;
+  height: 20px !important;
+}
+
+.reminders-page-minimal .restriction-card {
+  min-height: 126px !important;
+  border-radius: 12px !important;
+}
+
+.reminders-page-minimal .restriction-card img {
+  width: 60px !important;
+  height: 60px !important;
+}
+
+.reminders-page-minimal .icon-tag {
+  font-size: 1.08rem !important;
+  line-height: 1.1 !important;
+  padding: 7px 11px !important;
+}
+
+.reminders-page-minimal .reminders-actions .btn {
+  min-width: 240px !important;
+  min-height: 72px !important;
+  font-size: 1.45rem !important;
+  border-radius: 14px !important;
+}
+
+/* Camera status panel: hard center block */
+.camera-page .camera-info-card {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  min-height: 100% !important;
+}
+
+.camera-page .camera-status-minimal {
+  width: min(100%, 520px) !important;
+  margin: 0 auto !important;
+  display: grid !important;
+  justify-items: center !important;
+  align-content: center !important;
+}
+
+.camera-page .camera-instruction {
+  width: 100% !important;
+  min-height: 320px !important;
+  justify-content: center !important;
 }
