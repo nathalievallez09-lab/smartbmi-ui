@@ -4948,3 +4948,65 @@ textarea::placeholder {
   min-height: 320px !important;
   justify-content: center !important;
 }
+
+/* Virtual keyboard for name/age entry screens */
+.virtual-keyboard {
+  width: min(760px, 100%);
+  margin: 12px auto 0;
+  display: grid;
+  gap: 8px;
+}
+
+.vk-grid {
+  display: grid;
+  gap: 8px;
+}
+
+.vk-grid-name .vk-row {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+}
+
+.vk-grid-age {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  max-width: 260px;
+  margin: 0 auto;
+}
+
+.vk-key {
+  border: 1px solid rgba(132, 220, 255, 0.45);
+  background: linear-gradient(145deg, rgba(25, 72, 142, 0.92), rgba(20, 58, 120, 0.95));
+  color: #e9f8ff;
+  border-radius: 10px;
+  min-height: 42px;
+  min-width: 42px;
+  padding: 8px 10px;
+  font-size: 1rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.vk-key:hover {
+  filter: brightness(1.07);
+}
+
+.vk-actions {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.vk-key-space {
+  min-width: 180px;
+}
+
+.vk-key-action {
+  min-width: 120px;
+}
+
+.name-stage .input-step-panel,
+.age-stage .input-step-panel {
+  padding-bottom: 16px !important;
+}

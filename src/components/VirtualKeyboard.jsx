@@ -1,0 +1,99 @@
+const NAME_ROWS = [
+  ["Q", "W", "E", "R", "T", "Y", "U", "I", "O", "P"],
+  ["A", "S", "D", "F", "G", "H", "J", "K", "L"],
+  ["Z", "X", "C", "V", "B", "N", "M"],
+];
+
+const AGE_ROWS = [
+  ["1", "2", "3"],
+  ["4", "5", "6"],
+  ["7", "8", "9"],
+  ["0"],
+];
+
+export default function VirtualKeyboard({ mode, value, onChange }) {
+  const current = String(value ?? "");
+
+  const appendChar = (char) => {
+    if (mode === "age") {
+      const next = `${current}${char}`.replace(/\D/g, "").slice(0, 3);
+      onChange(next);
+      return;
+    }
+    const next = `${current}${char}`.replace(/\s{2,}/g, " ").slice(0, 40);
+    onChange(next);
+  };
+
+  const backspace = () => {
+    onChange(current.slice(0, -1));
+  };
+
+  const clearAll = () => {
+    onChange("");
+  };
+
+  const handleMouseDown = (event) => {
+    event.preventDefault();
+  };
+
+  if (mode === "age") {
+    return (
+      <div className="virtual-keyboard virtual-keyboard-age">
+        <div className="vk-grid vk-grid-age">
+          {AGE_ROWS.flat().map((key) => (
+            <button
+              key={key}
+              type="button"
+              className="vk-key vk-key-age"
+              onMouseDown={handleMouseDown}
+              onClick={() => appendChar(key)}
+            >
+              {key}
+            </button>
+          ))}
+        </div>
+        <div className="vk-actions">
+          <button type="button" className="vk-key vk-key-action" onMouseDown={handleMouseDown} onClick={backspace}>
+            Backspace
+          </button>
+          <button type="button" className="vk-key vk-key-action" onMouseDown={handleMouseDown} onClick={clearAll}>
+            Clear
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="virtual-keyboard virtual-keyboard-name">
+      <div className="vk-grid vk-grid-name">
+        {NAME_ROWS.map((row, rowIndex) => (
+          <div key={`row-${rowIndex}`} className="vk-row">
+            {row.map((key) => (
+              <button
+                key={key}
+                type="button"
+                className="vk-key"
+                onMouseDown={handleMouseDown}
+                onClick={() => appendChar(key)}
+              >
+                {key}
+              </button>
+            ))}
+          </div>
+        ))}
+      </div>
+      <div className="vk-actions">
+        <button type="button" className="vk-key vk-key-space" onMouseDown={handleMouseDown} onClick={() => appendChar(" ")}>
+          Space
+        </button>
+        <button type="button" className="vk-key vk-key-action" onMouseDown={handleMouseDown} onClick={backspace}>
+          Backspace
+        </button>
+        <button type="button" className="vk-key vk-key-action" onMouseDown={handleMouseDown} onClick={clearAll}>
+          Clear
+        </button>
+      </div>
+    </div>
+  );
+}

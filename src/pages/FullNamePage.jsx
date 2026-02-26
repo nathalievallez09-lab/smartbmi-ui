@@ -1,3 +1,5 @@
+import VirtualKeyboard from "../components/VirtualKeyboard";
+
 export default function FullNamePage({ value, onChange, onBack, onNext }) {
   const valid = value.trim().length > 0;
   return (
@@ -6,8 +8,15 @@ export default function FullNamePage({ value, onChange, onBack, onNext }) {
       <div className="name-glow name-glow-b" aria-hidden="true" />
       <div className="panel panel-large center-page input-step-panel">
         <h2 className="entry-title">Identity Name</h2>
-        <input className="kiosk-input kiosk-input-wide name-input" type="text" placeholder="Full Name" value={value} onChange={(e) => onChange(e.target.value)} />
+        <input
+          className="kiosk-input kiosk-input-wide name-input"
+          type="text"
+          placeholder="Full Name"
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+        />
         {!valid && <p className="message-danger name-error">Required</p>}
+        <VirtualKeyboard mode="name" value={value} onChange={onChange} />
       </div>
       <div className="actions name-actions">
         <button className="btn" onClick={onBack}>Back</button>
