@@ -28,10 +28,6 @@ export default function VirtualKeyboard({ mode, value, onChange }) {
     onChange(current.slice(0, -1));
   };
 
-  const clearAll = () => {
-    onChange("");
-  };
-
   const handleMouseDown = (event) => {
     event.preventDefault();
   };
@@ -55,9 +51,6 @@ export default function VirtualKeyboard({ mode, value, onChange }) {
         <div className="vk-actions">
           <button type="button" className="vk-key vk-key-action" onMouseDown={handleMouseDown} onClick={backspace}>
             Backspace
-          </button>
-          <button type="button" className="vk-key vk-key-action" onMouseDown={handleMouseDown} onClick={clearAll}>
-            Clear
           </button>
         </div>
       </div>
@@ -89,9 +82,6 @@ export default function VirtualKeyboard({ mode, value, onChange }) {
         </button>
         <button type="button" className="vk-key vk-key-action" onMouseDown={handleMouseDown} onClick={backspace}>
           Backspace
-        </button>
-        <button type="button" className="vk-key vk-key-action" onMouseDown={handleMouseDown} onClick={clearAll}>
-          Clear
         </button>
       </div>
     </div>

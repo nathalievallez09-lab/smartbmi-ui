@@ -79,27 +79,29 @@ export default function CameraPage({ mode, title, pose, progress, message, onCan
             <div className="camera-visual-card">
               <div className="camera-box">
                 <div className="camera-shade" aria-hidden="true" />
-                <div className="camera-lens-wrap">
-                  <div className="face-ring" />
-                  <div className="camera-lens">
-                    <video ref={videoRef} autoPlay playsInline muted className="camera-feed" />
+                <div className="camera-target">
+                  <div className="camera-lens-wrap">
+                    <div className="camera-lens">
+                      <video ref={videoRef} autoPlay playsInline muted className="camera-feed" />
+                    </div>
                   </div>
-                </div>
-                <div className="face-crosshair" />
-                <div className={`face-layout ${mode === "identification" ? "face-layout-identify" : "face-layout-register"}`} aria-hidden="true">
-                  <svg viewBox="0 0 220 220" className="face-layout-svg">
-                    <ellipse cx="110" cy="110" rx="62" ry="76" className="face-layout-line" />
-                    <ellipse cx="86" cy="102" rx="8" ry="6" className="face-layout-line" />
-                    <ellipse cx="134" cy="102" rx="8" ry="6" className="face-layout-line" />
-                    <path d="M110 110v24" className="face-layout-line" />
-                    <path d="M90 144c10 8 30 8 40 0" className="face-layout-line" />
-                  </svg>
-                </div>
-                <div className="face-corners" aria-hidden="true">
-                  <span className="corner corner-tl" />
-                  <span className="corner corner-tr" />
-                  <span className="corner corner-bl" />
-                  <span className="corner corner-br" />
+                  <div className="face-ring" />
+                  <div className={`face-layout ${mode === "identification" ? "face-layout-identify" : "face-layout-register"}`} aria-hidden="true">
+                    <svg viewBox="0 0 220 220" className="face-layout-svg">
+                      <ellipse cx="110" cy="110" rx="62" ry="76" className="face-layout-line" />
+                      <ellipse cx="86" cy="102" rx="8" ry="6" className="face-layout-line" />
+                      <ellipse cx="134" cy="102" rx="8" ry="6" className="face-layout-line" />
+                      <path d="M110 110v24" className="face-layout-line" />
+                      <path d="M90 144c10 8 30 8 40 0" className="face-layout-line" />
+                    </svg>
+                  </div>
+                  <div className="face-crosshair" />
+                  <div className="face-corners" aria-hidden="true">
+                    <span className="corner corner-tl" />
+                    <span className="corner corner-tr" />
+                    <span className="corner corner-bl" />
+                    <span className="corner corner-br" />
+                  </div>
                 </div>
                 <div className="camera-status">{cameraState === "ready" ? "Live Camera" : "Camera Preview"}</div>
                 {cameraState !== "ready" && cameraError && <p className="camera-error">{cameraError}</p>}
