@@ -8,15 +8,15 @@ export default function IdentityConfirmPage({ user, onYes, onNo }) {
         <div className="identity-grid">
           <div className="identity-row">
             <span className="identity-label"><UserRound /> Name</span>
-            <strong className="identity-value">{user.name}</strong>
+            <strong className="identity-value">{user.name || "--"}</strong>
           </div>
           <div className="identity-row">
             <span className="identity-label"><Calendar /> Age</span>
-            <strong className="identity-value">{user.age}</strong>
+            <strong className="identity-value">{user.age ?? "--"}</strong>
           </div>
           <div className="identity-row">
             <span className="identity-label"><Venus /> Sex</span>
-            <strong className="identity-value">{user.sex}</strong>
+            <strong className="identity-value">{user.sex || "--"}</strong>
           </div>
         </div>
       </div>

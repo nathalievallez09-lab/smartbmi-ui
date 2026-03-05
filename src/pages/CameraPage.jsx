@@ -1,9 +1,11 @@
 import { useEffect, useRef, useState } from "react";
 
-export default function CameraPage({ mode, title, pose, progress, message, onCancel, onNext }) {
+export default function CameraPage({ mode, title, pose, progress, message, returnMessage = "", onCancel, onNext }) {
   const videoRef = useRef(null);
+  const cameraBoxRef = useRef(null);
   const [cameraState, setCameraState] = useState("initializing");
   const [cameraError, setCameraError] = useState("");
+  const [guideSizes, setGuideSizes] = useState({ guide: 300, lens: 252, layout: 198 });
   const poseKey = String(pose || "").toLowerCase();
   const poseDirection = poseKey.includes("left")
     ? "left"
@@ -70,6 +72,41 @@ export default function CameraPage({ mode, title, pose, progress, message, onCan
     };
   }, []);
 
+  useEffect(() => {
+    const boxEl = cameraBoxRef.current;
+    if (!boxEl) return undefined;
+
+    const updateGuideSizes = () => {
+      const rect = boxEl.getBoundingClientRect();
+      const minSide = Math.max(0, Math.min(rect.width, rect.height));
+      if (!minSide) return;
+
+      const guide = Math.max(220, Math.min(500, Math.floor(minSide * 0.9)));
+      const lens = Math.floor(guide * 0.88);
+      const layout = Math.floor(guide * 0.92);
+
+      setGuideSizes((prev) => {
+        if (prev.guide === guide && prev.lens === lens && prev.layout === layout) return prev;
+        return { guide, lens, layout };
+      });
+    };
+
+    updateGuideSizes();
+
+    let observer;
+    if (typeof ResizeObserver !== "undefined") {
+      observer = new ResizeObserver(updateGuideSizes);
+      observer.observe(boxEl);
+    } else {
+      window.addEventListener("resize", updateGuideSizes);
+    }
+
+    return () => {
+      if (observer) observer.disconnect();
+      else window.removeEventListener("resize", updateGuideSizes);
+    };
+  }, []);
+
   return (
     <div className="page-with-actions camera-page">
       <div className="screen-grid single-col">
@@ -77,31 +114,37 @@ export default function CameraPage({ mode, title, pose, progress, message, onCan
           <h2>{title}</h2>
           <div className="camera-layout">
             <div className="camera-visual-card">
-              <div className="camera-box">
+              <div
+                ref={cameraBoxRef}
+                className="camera-box"
+                style={{
+                  "--guide-size": `${guideSizes.guide}px`,
+                  "--lens-size": `${guideSizes.lens}px`,
+                  "--layout-size": `${guideSizes.layout}px`,
+                }}
+              >
                 <div className="camera-shade" aria-hidden="true" />
-                <div className="camera-target">
-                  <div className="camera-lens-wrap">
-                    <div className="camera-lens">
-                      <video ref={videoRef} autoPlay playsInline muted className="camera-feed" />
-                    </div>
-                  </div>
+                <div className="camera-lens-wrap">
                   <div className="face-ring" />
-                  <div className={`face-layout ${mode === "identification" ? "face-layout-identify" : "face-layout-register"}`} aria-hidden="true">
-                    <svg viewBox="0 0 220 220" className="face-layout-svg">
-                      <ellipse cx="110" cy="110" rx="62" ry="76" className="face-layout-line" />
-                      <ellipse cx="86" cy="102" rx="8" ry="6" className="face-layout-line" />
-                      <ellipse cx="134" cy="102" rx="8" ry="6" className="face-layout-line" />
-                      <path d="M110 110v24" className="face-layout-line" />
-                      <path d="M90 144c10 8 30 8 40 0" className="face-layout-line" />
-                    </svg>
+                  <div className="camera-lens">
+                    <video ref={videoRef} autoPlay playsInline muted className="camera-feed" />
                   </div>
-                  <div className="face-crosshair" />
-                  <div className="face-corners" aria-hidden="true">
-                    <span className="corner corner-tl" />
-                    <span className="corner corner-tr" />
-                    <span className="corner corner-bl" />
-                    <span className="corner corner-br" />
-                  </div>
+                </div>
+                <div className="face-crosshair" />
+                <div className={`face-layout ${mode === "identification" ? "face-layout-identify" : "face-layout-register"}`} aria-hidden="true">
+                  <svg viewBox="0 0 220 220" className="face-layout-svg">
+                    <ellipse cx="110" cy="110" rx="62" ry="76" className="face-layout-line" />
+                    <ellipse cx="86" cy="102" rx="8" ry="6" className="face-layout-line" />
+                    <ellipse cx="134" cy="102" rx="8" ry="6" className="face-layout-line" />
+                    <path d="M110 110v24" className="face-layout-line" />
+                    <path d="M90 144c10 8 30 8 40 0" className="face-layout-line" />
+                  </svg>
+                </div>
+                <div className="face-corners" aria-hidden="true">
+                  <span className="corner corner-tl" />
+                  <span className="corner corner-tr" />
+                  <span className="corner corner-bl" />
+                  <span className="corner corner-br" />
                 </div>
                 <div className="camera-status">{cameraState === "ready" ? "Live Camera" : "Camera Preview"}</div>
                 {cameraState !== "ready" && cameraError && <p className="camera-error">{cameraError}</p>}
@@ -120,6 +163,7 @@ export default function CameraPage({ mode, title, pose, progress, message, onCan
             <div className="camera-info-card">
               <div className="camera-status-minimal">
                 <div className={`instruction-pill ${instructionClass}`}>{instructionLabel}</div>
+                {returnMessage && <p className="camera-returning-msg">{returnMessage}</p>}
                 <div className="camera-instruction">
                   <div className="camera-instruction-glow" aria-hidden="true" />
                   <div className="camera-motion-badge" aria-hidden="true">
@@ -152,4 +196,3 @@ export default function CameraPage({ mode, title, pose, progress, message, onCan
     </div>
   );
 }
-

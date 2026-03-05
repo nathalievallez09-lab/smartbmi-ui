@@ -28,6 +28,10 @@ export default function VirtualKeyboard({ mode, value, onChange }) {
     onChange(current.slice(0, -1));
   };
 
+  const clearAll = () => {
+    onChange("");
+  };
+
   const handleMouseDown = (event) => {
     event.preventDefault();
   };
@@ -40,17 +44,32 @@ export default function VirtualKeyboard({ mode, value, onChange }) {
             <button
               key={key}
               type="button"
-              className="vk-key vk-key-age"
+              className={`vk-key vk-key-age ${key === "0" ? "vk-key-zero" : ""}`}
               onMouseDown={handleMouseDown}
               onClick={() => appendChar(key)}
+              style={key === "0" ? { gridColumn: "2 / 3", gridRow: "4 / 5" } : undefined}
             >
               {key}
             </button>
           ))}
-        </div>
-        <div className="vk-actions">
-          <button type="button" className="vk-key vk-key-action" onMouseDown={handleMouseDown} onClick={backspace}>
-            Backspace
+          <button
+            type="button"
+            className="vk-key vk-key-age vk-key-action vk-key-clear"
+            onMouseDown={handleMouseDown}
+            onClick={clearAll}
+            style={{ gridColumn: "1 / 2", gridRow: "4 / 5" }}
+          >
+            C
+          </button>
+          <button
+            type="button"
+            className="vk-key vk-key-age vk-key-action vk-key-backspace"
+            onMouseDown={handleMouseDown}
+            onClick={backspace}
+            style={{ gridColumn: "3 / 4", gridRow: "4 / 5" }}
+            aria-label="Backspace"
+          >
+            ⌫
           </button>
         </div>
       </div>
@@ -81,7 +100,7 @@ export default function VirtualKeyboard({ mode, value, onChange }) {
           Space
         </button>
         <button type="button" className="vk-key vk-key-action" onMouseDown={handleMouseDown} onClick={backspace}>
-          Backspace
+          ←
         </button>
       </div>
     </div>

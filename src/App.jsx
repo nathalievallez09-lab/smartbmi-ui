@@ -13,13 +13,15 @@ import IdentityConfirmPage from "./pages/IdentityConfirmPage";
 import MeasurePage from "./pages/MeasurePage";
 import SavingPage from "./pages/SavingPage";
 import ResultPage from "./pages/ResultPage";
+import { readHeightCm, readWeightKg } from "./services/sensors";
+import { saveMeasurement, upsertUserProfile } from "./services/firestore";
 
 function randomUser() {
   return {
     id: String(Math.floor(10000 + Math.random() * 90000)),
-    name: "Guest User",
-    age: 24,
-    sex: Math.random() > 0.5 ? "Male" : "Female",
+    name: "",
+    age: null,
+    sex: "",
     weightKg: null,
     heightCm: null,
     bmi: null,
@@ -38,6 +40,7 @@ function computeBmi(weightKg, heightCm) {
 }
 
 export default function App() {
+  const RETURN_TO_MENU_SECONDS = 10;
   const [screen, setScreen] = useState("welcome");
   const [agreeTerms, setAgreeTerms] = useState(false);
   const [user, setUser] = useState(randomUser);
@@ -47,16 +50,28 @@ export default function App() {
   const [cameraMessage, setCameraMessage] = useState("Align face in frame.");
   const [cameraProgress, setCameraProgress] = useState(0);
   const [cameraPose, setCameraPose] = useState("Align face in frame");
+  const [cameraReturnMessage, setCameraReturnMessage] = useState("");
   const [weightStatus, setWeightStatus] = useState("Scale booting...");
+  const [weightStatusType, setWeightStatusType] = useState("incomplete");
+  const [weightStatusLabel, setWeightStatusLabel] = useState("INCOMPLETE");
+  const [weightReturnMessage, setWeightReturnMessage] = useState("");
   const [heightStatus, setHeightStatus] = useState("Height scan booting...");
+  const [heightStatusType, setHeightStatusType] = useState("incomplete");
+  const [heightStatusLabel, setHeightStatusLabel] = useState("INCOMPLETE");
+  const [heightReturnMessage, setHeightReturnMessage] = useState("");
   const [saveMessage, setSaveMessage] = useState("Syncing to cloud...");
   const [connection, setConnection] = useState("online");
   const [timerBadge, setTimerBadge] = useState("Session Active");
   const [footerHint, setFooterHint] = useState("Touchscreen enabled");
   const autoTimersRef = useRef([]);
+  const weightRequestAbortRef = useRef(null);
+  const heightRequestAbortRef = useRef(null);
 
   const clearTimers = () => {
-    autoTimersRef.current.forEach(clearTimeout);
+    autoTimersRef.current.forEach((id) => {
+      clearTimeout(id);
+      clearInterval(id);
+    });
     autoTimersRef.current = [];
   };
   const queue = (fn, ms) => {
@@ -64,8 +79,57 @@ export default function App() {
     autoTimersRef.current.push(id);
   };
 
+  const startReturnToMenuCountdown = (kind) => {
+    let seconds = RETURN_TO_MENU_SECONDS;
+    const setMessage = (remaining) => {
+      const text = `Returning to menu in ${remaining} seconds`;
+      if (kind === "Weight") setWeightReturnMessage(text);
+      else setHeightReturnMessage(text);
+    };
+
+    setMessage(seconds);
+    const intervalId = setInterval(() => {
+      seconds -= 1;
+      if (seconds <= 0) {
+        clearInterval(intervalId);
+        setScreen("menu");
+        return;
+      }
+      setMessage(seconds);
+    }, 1000);
+    autoTimersRef.current.push(intervalId);
+  };
+
+  const startCameraReturnToMenuCountdown = () => {
+    let seconds = RETURN_TO_MENU_SECONDS;
+    setCameraReturnMessage(`Returning to menu in ${seconds} seconds`);
+    const intervalId = setInterval(() => {
+      seconds -= 1;
+      if (seconds <= 0) {
+        clearInterval(intervalId);
+        setCameraAttempts(0);
+        setScreen("menu");
+        return;
+      }
+      setCameraReturnMessage(`Returning to menu in ${seconds} seconds`);
+    }, 1000);
+    autoTimersRef.current.push(intervalId);
+  };
+
+  const getSensorErrorTag = (error) => {
+    const msg = String(error?.message || "").toLowerCase();
+    if (msg.includes("timed out")) return "TIMEOUT";
+    if (msg.includes("connect")) return "CONNECTION";
+    if (msg.includes("http")) return "SENSOR API";
+    return "SENSOR";
+  };
+
   const reset = () => {
     clearTimers();
+    weightRequestAbortRef.current?.abort();
+    heightRequestAbortRef.current?.abort();
+    weightRequestAbortRef.current = null;
+    heightRequestAbortRef.current = null;
     setScreen("welcome");
     setAgreeTerms(false);
     setUser(randomUser());
@@ -73,12 +137,23 @@ export default function App() {
     setCameraAttempts(0);
     setCameraProgress(0);
     setCameraPose("Align face in frame");
+    setCameraReturnMessage("");
+    setWeightStatusType("incomplete");
+    setWeightStatusLabel("INCOMPLETE");
+    setWeightReturnMessage("");
+    setHeightStatusType("incomplete");
+    setHeightStatusLabel("INCOMPLETE");
+    setHeightReturnMessage("");
     setConnection("online");
     setTimerBadge("Session Active");
     setFooterHint("Touchscreen enabled");
   };
 
-  useEffect(() => () => clearTimers(), []);
+  useEffect(() => () => {
+    clearTimers();
+    weightRequestAbortRef.current?.abort();
+    heightRequestAbortRef.current?.abort();
+  }, []);
 
   useEffect(() => {
     if (screen === "welcome") setFooterHint("Tap Start");
@@ -94,6 +169,7 @@ export default function App() {
   useEffect(() => {
     if (screen !== "registration" && screen !== "identification") return;
     clearTimers();
+    setCameraReturnMessage("");
     setFooterHint(screen === "registration" ? "Registering face" : "Identifying face");
     if (screen === "registration") {
       setCameraProgress(8);
@@ -118,21 +194,10 @@ export default function App() {
     queue(() => { setCameraProgress(35); setCameraMessage("Scanning landmarks..."); }, 900);
     queue(() => { setCameraProgress(68); setCameraMessage("Matching profile..."); }, 1800);
     queue(() => {
-      const fail = Math.random() < 0.35;
       setCameraProgress(100);
-      if (!fail) {
-        setCameraMessage("Match found.");
-        setCameraAttempts(0);
-        queue(() => setScreen("identity-confirm"), 10000);
-        return;
-      }
-      setCameraAttempts((prev) => {
-        const next = prev + 1;
-        setCameraMessage("No match. Register new user.");
-        if (next >= 3) queue(() => { setScreen("menu"); setCameraAttempts(0); }, 1200);
-        else queue(() => setScreen("identification"), 1200);
-        return next;
-      });
+      setCameraAttempts((prev) => prev + 1);
+      setCameraMessage("No match. Register new user.");
+      startCameraReturnToMenuCountdown();
     }, 3000);
     return clearTimers;
   }, [screen]);
@@ -141,67 +206,124 @@ export default function App() {
     if (screen !== "weight") return;
     clearTimers();
     setFooterHint("Scale sensor active");
+    setUser((u) => ({ ...u, weightKg: null }));
+    setWeightStatusType("incomplete");
+    setWeightStatusLabel("INCOMPLETE");
+    setWeightReturnMessage("");
     setWeightStatus("Calibrating...");
-    queue(() => setWeightStatus("Step onto platform."), 900);
-    queue(() => setWeightStatus("Measuring weight..."), 1800);
-    queue(() => setWeightStatus("Hold still."), 3000);
-    queue(() => {
-      if (Math.random() < 0.08) {
-        setWeightStatus("Scale error. Returning to menu.");
-        queue(() => setScreen("menu"), 1200);
-        return;
+    queue(() => setWeightStatus("Step onto platform."), 700);
+    queue(() => setWeightStatus("Requesting load cell reading..."), 1400);
+    queue(() => setWeightStatus("Measuring weight..."), 2100);
+
+    const controller = new AbortController();
+    weightRequestAbortRef.current = controller;
+
+    queue(async () => {
+      try {
+        const weightKg = await readWeightKg(controller.signal);
+        if (controller.signal.aborted) return;
+        setConnection("online");
+        setUser((u) => ({ ...u, weightKg }));
+        setWeightStatusType("done");
+        setWeightStatusLabel("DONE");
+        setWeightStatus("Weight captured.");
+        queue(() => setScreen("height"), 10000);
+      } catch (error) {
+        if (controller.signal.aborted) return;
+        setConnection("offline");
+        setWeightStatusType("error");
+        setWeightStatusLabel(`INCOMPLETE | ${getSensorErrorTag(error)}`);
+        setWeightStatus("Weight measurement failed.");
+        startReturnToMenuCountdown("Weight");
       }
-      const weightKg = Number((58 + Math.random() * 20).toFixed(1));
-      setUser((u) => ({ ...u, weightKg }));
-      setWeightStatus("Weight captured.");
-      queue(() => setScreen("height"), 10000);
-    }, 4200);
-    return clearTimers;
+    }, 2300);
+
+    return () => {
+      clearTimers();
+      controller.abort();
+      if (weightRequestAbortRef.current === controller) {
+        weightRequestAbortRef.current = null;
+      }
+    };
   }, [screen]);
 
   useEffect(() => {
     if (screen !== "height") return;
     clearTimers();
     setFooterHint("Height sensor active");
+    setUser((u) => ({ ...u, heightCm: null }));
+    setHeightStatusType("incomplete");
+    setHeightStatusLabel("INCOMPLETE");
+    setHeightReturnMessage("");
     setHeightStatus("Calibrating...");
-    queue(() => setHeightStatus("Stand under sensor."), 1000);
-    queue(() => setHeightStatus("Hold still."), 2200);
-    queue(() => {
-      if (Math.random() < 0.08) {
-        setHeightStatus("Height sensor error. Returning to menu.");
-        queue(() => setScreen("menu"), 1200);
-        return;
+    queue(() => setHeightStatus("Stand under sensor."), 700);
+    queue(() => setHeightStatus("Requesting ToF reading..."), 1400);
+    queue(() => setHeightStatus("Hold still."), 2100);
+
+    const controller = new AbortController();
+    heightRequestAbortRef.current = controller;
+
+    queue(async () => {
+      try {
+        const heightCm = await readHeightCm(controller.signal);
+        if (controller.signal.aborted) return;
+        setConnection("online");
+        setUser((u) => {
+          const next = { ...u, heightCm };
+          const bmiData = computeBmi(next.weightKg, heightCm);
+          return { ...next, ...bmiData };
+        });
+        setHeightStatusType("done");
+        setHeightStatusLabel("DONE");
+        setHeightStatus("Height captured.");
+        queue(() => setScreen("saving"), 10000);
+      } catch (error) {
+        if (controller.signal.aborted) return;
+        setConnection("offline");
+        setHeightStatusType("error");
+        setHeightStatusLabel(`INCOMPLETE | ${getSensorErrorTag(error)}`);
+        setHeightStatus("Height measurement failed.");
+        startReturnToMenuCountdown("Height");
       }
-      const heightCm = 160 + Math.floor(Math.random() * 20);
-      setUser((u) => {
-        const next = { ...u, heightCm };
-        const bmiData = computeBmi(next.weightKg, heightCm);
-        return { ...next, ...bmiData };
-      });
-      setHeightStatus("Height captured.");
-      queue(() => setScreen("saving"), 10000);
-    }, 3600);
-    return clearTimers;
+    }, 2300);
+
+    return () => {
+      clearTimers();
+      controller.abort();
+      if (heightRequestAbortRef.current === controller) {
+        heightRequestAbortRef.current = null;
+      }
+    };
   }, [screen]);
 
   useEffect(() => {
     if (screen !== "saving") return;
     clearTimers();
     setFooterHint("Saving record");
-    const roll = Math.random();
-    if (roll < 0.15) {
-      setConnection("offline");
-      setSaveMessage("Offline. Saved locally.");
-    } else if (roll < 0.4) {
-      setConnection("online");
-      setSaveMessage("Local save. Upload queued.");
-    } else {
-      setConnection("online");
-      setSaveMessage("Cloud save complete.");
-    }
-    queue(() => setScreen("result"), 1400);
-    return clearTimers;
-  }, [screen]);
+    setSaveMessage("Saving to Firebase...");
+
+    let cancelled = false;
+    (async () => {
+      try {
+        await upsertUserProfile(user);
+        await saveMeasurement(user);
+        if (cancelled) return;
+        setConnection("online");
+        setSaveMessage("Cloud save complete.");
+      } catch {
+        if (cancelled) return;
+        setConnection("offline");
+        setSaveMessage("Save failed (offline/permission). Showing result only.");
+      } finally {
+        if (!cancelled) queue(() => setScreen("result"), 1400);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+      clearTimers();
+    };
+  }, [screen, user]);
 
   useEffect(() => {
     if (screen !== "result") return;
@@ -220,19 +342,19 @@ export default function App() {
     if (screen === "reminders") return <RemindersPage onNext={() => setScreen("terms")} />;
     if (screen === "terms") return <TermsPage agree={agreeTerms} setAgree={setAgreeTerms} onBack={() => setScreen("reminders")} onNext={() => setScreen("menu")} />;
 
-    if (screen === "menu") return <MenuPage onNewUser={() => { setNewUserForm({ fullName: "", age: "", sex: "" }); setScreen("full-name"); }} onExistingUser={() => { setUser((u) => ({ ...u, name: "Nathalie Vallez", age: 21, sex: "Female" })); setMode("identify"); setScreen("identification"); }} />;
+    if (screen === "menu") return <MenuPage onNewUser={() => { setNewUserForm({ fullName: "", age: "", sex: "" }); setScreen("full-name"); }} onExistingUser={() => { setMode("identify"); setScreen("identification"); }} />;
     if (screen === "full-name") return <FullNamePage value={newUserForm.fullName} onChange={(v) => setNewUserForm((f) => ({ ...f, fullName: v }))} onBack={() => setScreen("menu")} onNext={() => setScreen("age")} />;
     if (screen === "age") return <AgePage value={newUserForm.age} onChange={(v) => setNewUserForm((f) => ({ ...f, age: v }))} onBack={() => setScreen("full-name")} onNext={() => setScreen("sex")} />;
     if (screen === "sex") return <SexPage sex={newUserForm.sex} setSex={(v) => setNewUserForm((f) => ({ ...f, sex: v }))} onBack={() => setScreen("age")} onNext={() => { setUser((u) => ({ ...u, name: newUserForm.fullName, age: Number(newUserForm.age), sex: newUserForm.sex })); setMode("registration"); setScreen("registration"); }} />;
-    if (screen === "registration") return <CameraPage mode="registration" title="Facial Registration" pose={cameraPose} progress={cameraProgress} message={cameraMessage} onCancel={() => setScreen("menu")} onNext={() => setScreen("weight")} />;
-    if (screen === "identification") return <CameraPage mode="identification" title="Facial Identification" pose={cameraPose} progress={cameraProgress} message={cameraMessage} onCancel={() => setScreen("menu")} onNext={() => setScreen("identity-confirm")} />;
+    if (screen === "registration") return <CameraPage mode="registration" title="Facial Registration" pose={cameraPose} progress={cameraProgress} message={cameraMessage} returnMessage={cameraReturnMessage} onCancel={() => setScreen("menu")} onNext={() => setScreen("weight")} />;
+    if (screen === "identification") return <CameraPage mode="identification" title="Facial Identification" pose={cameraPose} progress={cameraProgress} message={cameraMessage} returnMessage={cameraReturnMessage} onCancel={() => setScreen("menu")} onNext={() => setScreen("identity-confirm")} />;
     if (screen === "identity-confirm") return <IdentityConfirmPage user={user} onYes={() => setScreen("weight")} onNo={() => setScreen("menu")} />;
-    if (screen === "weight") return <MeasurePage title="Weight Measurement" status={weightStatus} label="Weight" loading={user.weightKg == null} value={user.weightKg ? `${user.weightKg} kg` : "--.- kg"} onNext={() => setScreen("height")} nextLabel="Next" />;
-    if (screen === "height") return <MeasurePage title="Height Measurement" status={heightStatus} label="Height" loading={user.heightCm == null} value={user.heightCm ? `${user.heightCm} cm` : "--- cm"} onNext={() => setScreen("saving")} nextLabel="Next" />;
+    if (screen === "weight") return <MeasurePage title="Weight Measurement" status={weightStatus} statusType={weightStatusType} statusLabel={weightStatusLabel} returnMessage={weightReturnMessage} label="Weight" loading={user.weightKg == null} value={user.weightKg ? `${user.weightKg} kg` : "--.- kg"} onBackToMenu={() => setScreen("menu")} onNext={() => setScreen("height")} nextLabel="Next" />;
+    if (screen === "height") return <MeasurePage title="Height Measurement" status={heightStatus} statusType={heightStatusType} statusLabel={heightStatusLabel} returnMessage={heightReturnMessage} label="Height" loading={user.heightCm == null} value={user.heightCm ? `${user.heightCm} cm` : "--- cm"} onBackToMenu={() => setScreen("menu")} onNext={() => setScreen("saving")} nextLabel="Next" />;
     if (screen === "saving") return <SavingPage message={saveMessage} />;
     if (screen === "result") return <ResultPage user={user} onReset={reset} />;
     return <MenuPage onNewUser={() => setScreen("full-name")} onExistingUser={() => setScreen("identification")} />;
-  }, [screen, agreeTerms, newUserForm, user, cameraMessage, cameraPose, cameraProgress, weightStatus, heightStatus, saveMessage]);
+  }, [screen, agreeTerms, newUserForm, user, cameraMessage, cameraPose, cameraProgress, cameraReturnMessage, weightStatus, weightStatusType, weightStatusLabel, weightReturnMessage, heightStatus, heightStatusType, heightStatusLabel, heightReturnMessage, saveMessage]);
 
   return (
     <>
@@ -289,11 +411,11 @@ export default function App() {
               <motion.div
                 key={screen}
                 className={`page-wrap ${
-                  screen === "welcome" || screen === "reminders" || screen === "saving"
+                  screen === "welcome" || screen === "reminders" || screen === "saving" || screen === "terms" || screen === "result"
                     ? "page-wrap-centered"
                     : ""
                 } ${
-                  screen === "registration" || screen === "identification" || screen === "result"
+                  screen === "registration" || screen === "identification"
                     ? "page-wrap-fit"
                     : ""
                 }`}

@@ -14,14 +14,14 @@ export default function ResultPage({ user, onReset }) {
           </div>
           <div className="result-grid">
             {[
-              ["Name", user.name, <UserRound />],
+              ["Name", user.name || "--", <UserRound />],
               ["User ID", user.id],
-              ["Age", String(user.age)],
-              ["Sex", user.sex],
-              ["Weight", `${user.weightKg} kg`],
-              ["Height", `${user.heightCm} cm`],
-              ["BMI", String(user.bmi)],
-              ["Category", user.category],
+              ["Age", user.age ?? "--"],
+              ["Sex", user.sex || "--"],
+              ["Weight", user.weightKg != null ? `${user.weightKg} kg` : "--"],
+              ["Height", user.heightCm != null ? `${user.heightCm} cm` : "--"],
+              ["BMI", user.bmi != null ? String(user.bmi) : "--"],
+              ["Category", user.category || "--"],
             ].map(([k, v, icon]) => (
               <div className="result-item" key={k}>
                 <div className="result-label">{icon}{k}</div>

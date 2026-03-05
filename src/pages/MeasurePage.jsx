@@ -1,10 +1,26 @@
 import { Ruler, ScanLine, Weight } from "lucide-react";
 import { motion } from "framer-motion";
 
-export default function MeasurePage({ title, status, label, value, loading, onNext, nextLabel = "Next" }) {
+export default function MeasurePage({
+  title,
+  status,
+  label,
+  value,
+  loading,
+  statusType = "incomplete",
+  statusLabel,
+  returnMessage = "",
+  onBackToMenu,
+  onNext,
+  nextLabel = "Next",
+}) {
   const isWeight = label.toLowerCase().includes("weight");
   const icon = isWeight ? <Weight /> : <Ruler />;
   const chipText = status;
+  const isDone = statusType === "done";
+  const isError = statusType === "error";
+  const instructionLabel = statusLabel || (isDone ? "DONE" : "INCOMPLETE");
+  const instructionClass = isDone ? "instruction-done" : "instruction-alert";
 
   return (
     <div className="page-with-actions measure-page">
@@ -12,22 +28,39 @@ export default function MeasurePage({ title, status, label, value, loading, onNe
         <div className="panel panel-large measure-panel">
           <div className="measure-head">
             <h2 className="measure-title">{icon}{title}</h2>
-            <span className="measure-chip">{chipText}</span>
+            <span className={`measure-chip instruction-pill ${instructionClass}`}>{instructionLabel}</span>
           </div>
+          {!isError && (
+            <p className={`measure-status ${isDone ? "message-ok" : "message-warning"}`}>{chipText}</p>
+          )}
 
           <div className={`measure-visual-stage ${isWeight ? "visual-weight" : "visual-height"}`}>
             {isWeight ? (
               <div className="weight-visual">
-                <motion.div
-                  className="weight-glow"
-                  animate={{ scale: [1, 1.08, 1], opacity: [0.4, 0.9, 0.4] }}
-                  transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
-                />
-                <motion.div
-                  className="weight-platform"
-                  animate={{ y: [0, -4, 0], rotateX: [16, 12, 16] }}
-                  transition={{ duration: 2.2, repeat: Infinity, ease: "easeInOut" }}
-                />
+                <div className="weight-scale">
+                  <div className="weight-display">
+                    <span className="weight-display-label">KG</span>
+                    <motion.span
+                      className="weight-display-digits"
+                      animate={{ opacity: [0.7, 1, 0.7] }}
+                      transition={{ duration: 1.4, repeat: Infinity, ease: "easeInOut" }}
+                    >
+                      00.0
+                    </motion.span>
+                  </div>
+                  <motion.div
+                    className="weight-scan-line"
+                    animate={{ x: [-48, 48] }}
+                    transition={{ duration: 1.7, repeat: Infinity, repeatType: "reverse", ease: "easeInOut" }}
+                  />
+                  <div className="weight-pad" />
+                  <div className="weight-feet" aria-hidden="true">
+                    <i />
+                    <i />
+                    <i />
+                    <i />
+                  </div>
+                </div>
                 <div className="weight-shadow" />
               </div>
             ) : (
@@ -69,11 +102,17 @@ export default function MeasurePage({ title, status, label, value, loading, onNe
         </div>
       </div>
 
-      {!loading && typeof onNext === "function" && (
-        <div className="actions measure-actions">
+      <div className="actions measure-actions">
+        {isError && typeof onBackToMenu === "function" && (
+          <>
+            <p className="measure-returning-msg">{returnMessage}</p>
+            <button className="btn measure-back-btn" onClick={onBackToMenu}>Back to Menu</button>
+          </>
+        )}
+        {!isError && !loading && typeof onNext === "function" && (
           <button className="btn btn-primary measure-next-btn" onClick={onNext}>{nextLabel}</button>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   );
 }
